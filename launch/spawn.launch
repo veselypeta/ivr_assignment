@@ -43,7 +43,7 @@
                 joint4_position_controller
 		--timeout 60">
 	</node>
-
+<!-- End Robot -->
 <!-- convert joint states to TF transforms for rviz, etc -->
 	<node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"
 	   respawn="false" output="screen">
@@ -150,6 +150,12 @@
   <group ns="/target_control"> 
         <node name="target_move" pkg="ivr_assignment" type="target_move.py" args="$(find ivr_assignment)/src/target_move.py" />
   </group>
+
+<!--Spawn camera recordings-->
+   <group>
+        <node name="image1" pkg="ivr_assignment" type="image1.py" args="$(find ivr_assignment)/src/image1.py" />
+        <node name="image2" pkg="ivr_assignment" type="image2.py" args="$(find ivr_assignment)/src/image2.py" />
+   </group>
 
 
 </launch>
