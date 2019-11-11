@@ -12,8 +12,11 @@ def detect_red(image):
     # Obtain the moments of the binary image
     M = cv2.moments(mask)
     # Calculate pixel coordinates for the centre of the blob
-    cx = int(M['m10'] / M['m00'])
-    cy = int(M['m01'] / M['m00'])
+    if M['m00'] != 0:
+        cx = int(M['m10'] / M['m00'])
+        cy = int(M['m01'] / M['m00'])
+    else:
+        cx, cy = 0, 0
     return np.array([cx, cy])
 
 
@@ -23,8 +26,11 @@ def detect_green(image):
     kernel = np.ones((5, 5), np.uint8)
     mask = cv2.dilate(mask, kernel, iterations=3)
     M = cv2.moments(mask)
-    cx = int(M['m10'] / M['m00'])
-    cy = int(M['m01'] / M['m00'])
+    if M['m00'] != 0:
+        cx = int(M['m10'] / M['m00'])
+        cy = int(M['m01'] / M['m00'])
+    else:
+        cx, cy = 0, 0
     return np.array([cx, cy])
 
 
@@ -34,8 +40,11 @@ def detect_blue(image):
     kernel = np.ones((5, 5), np.uint8)
     mask = cv2.dilate(mask, kernel, iterations=3)
     M = cv2.moments(mask)
-    cx = int(M['m10'] / M['m00'])
-    cy = int(M['m01'] / M['m00'])
+    if M['m00'] != 0:
+        cx = int(M['m10'] / M['m00'])
+        cy = int(M['m01'] / M['m00'])
+    else:
+        cx, cy = 0, 0
     return np.array([cx, cy])
 
 
@@ -45,6 +54,9 @@ def detect_yellow(image):
     kernel = np.ones((5, 5), np.uint8)
     mask = cv2.dilate(mask, kernel, iterations=3)
     M = cv2.moments(mask)
-    cx = int(M['m10'] / M['m00'])
-    cy = int(M['m01'] / M['m00'])
+    if M['m00'] != 0:
+        cx = int(M['m10'] / M['m00'])
+        cy = int(M['m01'] / M['m00'])
+    else:
+        cx, cy = 0, 0
     return np.array([cx, cy])

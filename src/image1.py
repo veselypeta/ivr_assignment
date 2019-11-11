@@ -36,6 +36,7 @@ class image_converter:
             print(e)
 
         yellow_circle = detect_yellow(self.cv_image1)
+
         blue_circle = detect_blue(self.cv_image1)
         green_circle = detect_green(self.cv_image1)
         red_circle = detect_red(self.cv_image1)
