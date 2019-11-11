@@ -43,9 +43,6 @@ class ProcessImages:
             self.cv_image2 = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
             print(e)
-        # im1 = cv2.imshow('window2', self.cv_image2)
-        # cv2.waitKey(1)
-        # print(self.cv_image1.shape)
 
     def callback2(self, data):
         self.image_2_joints = np.array(data.data).reshape((4, 2))
@@ -114,16 +111,38 @@ class ProcessImages:
             # TODO here we need to check what comes back -- there may be more circles -- or none
             if img_1_circles is not None and len(img_1_circles) == 1 and \
                     img_2_circles is not None and len(img_2_circles) == 1:
-                c1_x, c1_y, c1_z = img_1_circles[0][0]
-                c2_x, c2_y, c2_z = img_2_circles[0][0]
+                c1_y, c1_z, _ = img_1_circles[0][0]
+                c2_x, c2_z, _ = img_2_circles[0][0]
                 self.target_position[0] = c2_x
                 self.target_position[1] = c1_y
-                self.target_position[2] = (c1_z + c2_z) / 2
+                self.target_position[2] = 800 - ((c1_z + c2_z) / 2)
+
+    def pixel_to_meter(self):
+        [yellow, blue, green, red] = self.joint_positions
+        f = np.linalg.norm(yellow - blue)
+        s = np.linalg.norm(blue - green)
+        t = np.linalg.norm(green - red)
+
+        try:
+            pixel_f = 2 / f
+            pixel_s = 3 / s
+            pixel_t = 2 / t
+            mean = np.mean([pixel_t, pixel_s, pixel_f])
+            return mean
+        except ZeroDivisionError:
+            return 0
+
+    def distance_to_target(self):
+        p2m = self.pixel_to_meter()
+        pixel_distance = np.linalg.norm(self.joint_positions[0] - self.target_position)
+        meter_distance = pixel_distance * p2m
+        return meter_distance
 
     def update(self):
         self.get_joint_position()
         self.detect_joint_angles()
         self.detect_target()
+        dist = self.distance_to_target()
 
 
 # call the class
