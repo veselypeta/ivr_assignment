@@ -2,7 +2,7 @@
 
 import rospy
 from sensor_msgs.msg import Image
-from std_msgs.msg import Float64MultiArray, String
+from std_msgs.msg import Float64MultiArray
 import numpy as np
 import cv2
 import sys
