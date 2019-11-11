@@ -46,11 +46,11 @@ class ProcessImages:
 
     def callback2(self, data):
         self.image_2_joints = np.array(data.data).reshape((4, 2))
-        self.update()
+        # self.update()
 
     def callback1(self, data):
         self.image_1_joints = np.array(data.data).reshape((4, 2))
-        self.update()
+        # self.update()
 
     # assumption
     # We receive x,z from image2
@@ -61,44 +61,50 @@ class ProcessImages:
         for i in range(self.image_1_joints.shape[0]):
             xz_plane = self.image_2_joints[i]
             yz_plane = self.image_1_joints[i]
+            # print(self.image_1_joints)
+            # print(yz_plane)
             x = xz_plane[0]
             y = yz_plane[0]
-            z = 800 - (xz_plane[1] + yz_plane[1]) / 2     # have z be the average from both cameras
+            z = 800 - (xz_plane[1] + yz_plane[1]) / 2  # have z be the average from both cameras
             joint_positions.append([x, y, z])
         self.joint_positions = np.array(joint_positions)
 
     # now we have 3 angles to detect
     # xy, xz, yz
     def detect_joint_angles(self):
-        [joint1, joint2, joint3, end] = self.joint_positions
-        joint1_angle = (np.pi/2) - np.arctan2((joint2[0] - joint3[0]), (joint2[1] - joint3[1]))
+        [yellow, blue, green, red] = self.joint_positions
+
+        j1_x = green - blue
+        joint1_angle = np.arctan2(j1_x[1],
+                                  j1_x[0])
+        # print("joint 1 = " + str(joint1_angle))
         z_rot_mat = np.array([
             [np.cos(joint1_angle), -np.sin(joint1_angle), 0],
-            [-np.sin(joint1_angle), np.cos(joint1_angle), 0],
-            [0,                     0,                    1],
+            [np.sin(joint1_angle), np.cos(joint1_angle), 0],
+            [0, 0, 1],
         ])
-        joint2_rot = np.dot(joint2, z_rot_mat)
-        joint3_rot = np.dot(joint3, z_rot_mat)
 
-        # print(joint2_rot)
-        # print(joint3_rot)
-        # angle for joint 2
-        joint2_angle = np.arctan2(joint2_rot[0] - joint3_rot[0], joint2_rot[2] - joint3_rot[2])
-        print(joint2_angle)
+        # apply rotation from joint 1
+        joint2_rot = np.dot(blue, z_rot_mat)
+        joint3_rot = np.dot(green, z_rot_mat)
+
+        joint2_angle = (np.pi/2) - np.arctan2(joint3_rot[2] - joint2_rot[2], joint3_rot[0] - joint2_rot[0])
+
         y_rot_mat = np.array([
-            [np.cos(joint2_angle),  0, -np.sin(joint2_angle)],
-            [0,                     1,                     0],
-            [np.sin(joint2_angle),  0,  np.cos(joint2_angle)],
+            [np.cos(joint2_angle), 0, -np.sin(joint2_angle)],
+            [0, 1, 0],
+            [np.sin(joint2_angle), 0, np.cos(joint2_angle)],
         ])
 
         # new rotation matrix after the first two rotations
         yz_rot = np.dot(z_rot_mat, y_rot_mat)
 
-        joint3_rot_new = np.dot(joint3, yz_rot)
-        end_rot = np.dot(end, yz_rot)
+        joint3_rot_new = np.dot(green, yz_rot)
+        end_rot = np.dot(red, yz_rot)
 
+        diff = end_rot - joint3_rot_new
         # angle is on the yz plane
-        joint3_angle = np.arctan2(joint3_rot_new[1] - end_rot[1], joint3_rot_new[2] - end_rot[2])
+        joint3_angle = np.arctan2(diff[2], diff[1]) - (np.pi/2)
         self.angles = np.array([joint1_angle, 0, joint2_angle, joint3_angle])
 
     def update(self):
@@ -106,15 +112,16 @@ class ProcessImages:
         self.detect_joint_angles()
         # print(self.angles)
 
+        # print(self.joint_positions)
 
 
 # call the class
 def main(args):
     ic = ProcessImages()
     try:
-        # while not rospy.is_shutdown():
-        #     ic.update()
-        rospy.spin()
+        while not rospy.is_shutdown():
+            ic.update()
+        # rospy.spin()
     except KeyboardInterrupt:
         print("Shutting down")
     cv2.destroyAllWindows()
