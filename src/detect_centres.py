@@ -48,6 +48,15 @@ def detect_blue(image):
     return np.array([cx, cy])
 
 
+# detect circles in an image using HoughCircles
+def detect_circles(image):
+    mask = cv2.inRange(image, (60, 90, 110), (110, 190, 255))
+    mask_blurred = cv2.blur(mask, (2, 2))
+    circles = cv2.HoughCircles(mask_blurred, cv2.HOUGH_GRADIENT, 1, 20,
+                               param1=50, param2=13, minRadius=0, maxRadius=0)
+    return circles
+
+
 # Detecting the centre of the yellow circle
 def detect_yellow(image):
     mask = cv2.inRange(image, (0, 100, 100), (0, 255, 255))
