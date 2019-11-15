@@ -65,43 +65,64 @@ class ProcessImages:
             joint_positions.append([x, y, z])
         self.joint_positions = np.array(joint_positions)
 
-    # now we have 3 angles to detect
-    # xy, xz, yz
+
     def detect_joint_angles(self):
         [yellow, blue, green, red] = self.joint_positions
 
-        j1_x = green - blue
-        joint1_angle = np.arctan2(j1_x[1],
-                                  j1_x[0])
-        # print("joint 1 = " + str(joint1_angle))
+        blue = blue - yellow
+        green = green - yellow
+        red = red - yellow
+        yellow = yellow - yellow
+
+        yellow2blue = blue - yellow
+
+        g2b = green - blue
+        joint1_angle = np.arctan2(g2b[1],
+                                  g2b[0])
+
+
         z_rot_mat = np.array([
             [np.cos(joint1_angle), -np.sin(joint1_angle), 0],
             [np.sin(joint1_angle), np.cos(joint1_angle), 0],
-            [0, 0, 1],
+            [0, 0, 1]
         ])
 
-        # apply rotation from joint 1
-        joint2_rot = np.dot(blue, z_rot_mat)
-        joint3_rot = np.dot(green, z_rot_mat)
 
-        joint2_angle = (np.pi / 2) - np.arctan2(joint3_rot[2] - joint2_rot[2], joint3_rot[0] - joint2_rot[0])
+        blue_1 = np.dot(blue, z_rot_mat)
+        green_1 = np.dot(green, z_rot_mat)
 
-        y_rot_mat = np.array([
-            [np.cos(joint2_angle), 0, -np.sin(joint2_angle)],
-            [0, 1, 0],
-            [np.sin(joint2_angle), 0, np.cos(joint2_angle)],
+        blue2green = green_1 - blue_1
+        temp_angle = np.arctan2(blue2green[2], blue2green[0])
+        joint2_angle = (np.pi / 2) - temp_angle
+
+
+
+        # shift to green
+        step1 = np.array([
+            [np.cos(1), -np.sin(1), 0, yellow2blue[0]],
+            [np.sin(1), np.cos(1), 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
         ])
 
-        # new rotation matrix after the first two rotations
-        yz_rot = np.dot(z_rot_mat, y_rot_mat)
+        step2 = np.array([
+            [np.cos(1), 0, -np.sin(1), blue2green[0]],
+            [0, 1, 0, blue2green[1]],
+            [np.sin(1), 0, np.cos(1), blue2green[2]],
+            [0, 0, 0, 1]
+        ])
 
-        joint3_rot_new = np.dot(green, yz_rot)
-        end_rot = np.dot(red, yz_rot)
+        shift = np.dot(step2, step1)
+        shifted_green = np.dot(shift, np.append(green, 0))
+        shifted_red = np.dot(shift, np.append(red, 0))
+        green2red = shifted_red - shifted_green
+        joint3_angle = np.arctan2(green2red[2], green2red[1])
 
-        diff = end_rot - joint3_rot_new
-        # angle is on the yz plane
-        joint3_angle = np.arctan2(diff[2], diff[1]) - (np.pi / 2)
-        self.angles = np.array([joint1_angle, 0, joint2_angle, joint3_angle])
+        arm_2 = green - blue
+        arm_3 = red - green
+        dot_angle = np.arccos(np.dot(arm_3, arm_2) / (np.linalg.norm(arm_2) * np.linalg.norm(arm_3)))
+
+        self.angles = np.array([joint1_angle, 0, joint2_angle, dot_angle])
 
     def detect_target(self):
         if self.cv_image1 is not None and self.cv_image2 is not None:
@@ -143,6 +164,9 @@ class ProcessImages:
         self.detect_joint_angles()
         self.detect_target()
         dist = self.distance_to_target()
+
+        # print(self.angles)
+
 
 
 # call the class
