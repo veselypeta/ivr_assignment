@@ -65,7 +65,6 @@ class ProcessImages:
             joint_positions.append([x, y, z])
         self.joint_positions = np.array(joint_positions)
 
-
     def detect_joint_angles(self):
         [yellow, blue, green, red] = self.joint_positions
 
@@ -80,13 +79,11 @@ class ProcessImages:
         joint1_angle = np.arctan2(g2b[1],
                                   g2b[0])
 
-
         z_rot_mat = np.array([
             [np.cos(joint1_angle), -np.sin(joint1_angle), 0],
             [np.sin(joint1_angle), np.cos(joint1_angle), 0],
             [0, 0, 1]
         ])
-
 
         blue_1 = np.dot(blue, z_rot_mat)
         green_1 = np.dot(green, z_rot_mat)
@@ -95,13 +92,11 @@ class ProcessImages:
         temp_angle = np.arctan2(blue2green[2], blue2green[0])
         joint2_angle = (np.pi / 2) - temp_angle
 
-
-
         # shift to green
         step1 = np.array([
-            [np.cos(1), -np.sin(1), 0, yellow2blue[0]],
+            [np.cos(1), -np.sin(1), 0, 0],
             [np.sin(1), np.cos(1), 0, 0],
-            [0, 0, 1, 0],
+            [0, 0, 1, yellow2blue[2]],
             [0, 0, 0, 1]
         ])
 
@@ -166,7 +161,6 @@ class ProcessImages:
         dist = self.distance_to_target()
 
         # print(self.angles)
-
 
 
 # call the class
