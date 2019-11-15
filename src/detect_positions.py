@@ -140,6 +140,18 @@ class ProcessImages:
         FK = np.dot(np.dot(step1,step2),step3)
         return FK[:,3][:3]
     
+    def manual_FK(self):
+        [a1, _, a2, a3] = self.angles
+        
+        FK = np.array([
+            [3*np.cos(a1)*np.sin(a2) + 2*np.cos(a3)*(-np.cos(a1)*np.sin(a2) - np.sin(a1)*np.cos(a2)) - 2*np.sin(a1)*np.sin(a3)],
+            [2*np.cos(a1)*np.sin(a3) + 3*np.sin(a1)*np.sin(a2) + 2*np.cos(a3)*(np.cos(a1)*np.cos(a2) - np.sin(a1)*np.sin(a2))],
+            [3*np.cos(a2) + 2*np.cos(a3) + 2]
+        ])
+        print(FK/self.pixel_to_meter())
+    
+    
+    
     def detect_target(self):
         if self.cv_image1 is not None and self.cv_image2 is not None:
             img_1_circles = detect_circles(self.cv_image1)
@@ -182,6 +194,7 @@ class ProcessImages:
         #dist = self.distance_to_target()
         fk = self.forward_kinematics()
         print(fk, self.joint_positions[3]-self.joint_positions[0])
+        self.manual_FK()
         #print(self.angles)
 
 
