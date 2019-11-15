@@ -88,37 +88,58 @@ class ProcessImages:
         blue_1 = np.dot(blue, z_rot_mat)
         green_1 = np.dot(green, z_rot_mat)
 
-        blue2green = green_1 - blue_1
+        blue2green = green_1 - blue_1   
         temp_angle = np.arctan2(blue2green[2], blue2green[0])
         joint2_angle = (np.pi / 2) - temp_angle
 
-        # shift to green
+        arm_2 = green - blue
+        arm_3 = red - green
+        joint3_angle = np.arccos(np.dot(arm_3, arm_2) / (np.linalg.norm(arm_2) * np.linalg.norm(arm_3)))
+
+        self.angles = np.array([joint1_angle, 0, joint2_angle, joint3_angle])
+    
+    def forward_kinematics(self):
+        [a1, _, a2, a3] = self.angles
+        [yellow, blue, green, red] = self.joint_positions
+
+        blue = blue - yellow
+        green = green - yellow
+        red = red - yellow
+        yellow = yellow - yellow
+
+        yellow2blue = blue - yellow
+    # shift to green
         step1 = np.array([
-            [np.cos(1), -np.sin(1), 0, 0],
-            [np.sin(1), np.cos(1), 0, 0],
+            [np.cos(a1), -np.sin(a1), 0, 0],
+            [np.sin(a1), np.cos(a1), 0, 0],
             [0, 0, 1, yellow2blue[2]],
             [0, 0, 0, 1]
         ])
-
+        blue_rot = np.dot(np.append(blue,1), step1)
+        green_rot = np.dot(np.append(green,1), step1)
+        blue2green = green_rot - blue_rot
+        
         step2 = np.array([
-            [np.cos(1), 0, -np.sin(1), blue2green[0]],
+            [np.cos(a2), 0, -np.sin(a2), blue2green[0]],
             [0, 1, 0, blue2green[1]],
-            [np.sin(1), 0, np.cos(1), blue2green[2]],
+            [np.sin(a2), 0, np.cos(a2), blue2green[2]],
             [0, 0, 0, 1]
         ])
-
-        shift = np.dot(step2, step1)
-        shifted_green = np.dot(shift, np.append(green, 0))
-        shifted_red = np.dot(shift, np.append(red, 0))
-        green2red = shifted_red - shifted_green
-        joint3_angle = np.arctan2(green2red[2], green2red[1])
-
-        arm_2 = green - blue
-        arm_3 = red - green
-        dot_angle = np.arccos(np.dot(arm_3, arm_2) / (np.linalg.norm(arm_2) * np.linalg.norm(arm_3)))
-
-        self.angles = np.array([joint1_angle, 0, joint2_angle, dot_angle])
-
+        
+        green_rot2 = np.dot(green_rot, step2)
+        red_rot = np.dot(np.dot(np.append(red,1), step1),step2)
+        green2red = red_rot - green_rot2
+        
+        step3 = np.array([
+            [1, 0, 0, green2red[0]],
+            [0, np.cos(a3), -np.sin(a3), blue2green[1]],
+            [0, np.sin(a3), np.cos(a3), green2red[2]],
+            [0, 0, 0, 1]
+        ])
+        
+        FK = np.dot(np.dot(step1,step2),step3)
+        return FK[:,3][:3]
+    
     def detect_target(self):
         if self.cv_image1 is not None and self.cv_image2 is not None:
             img_1_circles = detect_circles(self.cv_image1)
@@ -157,10 +178,11 @@ class ProcessImages:
     def update(self):
         self.get_joint_position()
         self.detect_joint_angles()
-        self.detect_target()
-        dist = self.distance_to_target()
-
-        # print(self.angles)
+        #self.detect_target()
+        #dist = self.distance_to_target()
+        fk = self.forward_kinematics()
+        print(fk, self.joint_positions[3]-self.joint_positions[0])
+        #print(self.angles)
 
 
 # call the class
