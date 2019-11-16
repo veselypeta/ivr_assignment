@@ -21,9 +21,9 @@ class ProcessImages:
         self.image_1_sub = rospy.Subscriber("image_topic2", Image, self.callback_img_2)
 
         self.target_publisher = rospy.Publisher('target_topic', Float64MultiArray, queue_size=10)
-        self.angles_publisher = rospy.Publisher('target_topic', Float64MultiArray, queue_size=10)
-        self.end_effector_publisher= rospy.Publisher('target_topic', Float64MultiArray, queue_size=10)
-        self.jacobian_publisher = rospy.Publisher('target_topic', Float64MultiArray, queue_size=10)
+        self.angles_publisher = rospy.Publisher('angles_topic', Float64MultiArray, queue_size=10)
+        self.end_effector_publisher= rospy.Publisher('end_effector_topic', Float64MultiArray, queue_size=10)
+        self.jacobian_publisher = rospy.Publisher('jacobian_topic', Float64MultiArray, queue_size=10)
 
         self.image_1_joints = np.zeros((4, 2))
         self.image_2_joints = np.zeros((4, 2))
