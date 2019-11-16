@@ -88,7 +88,7 @@ class ProcessImages:
         blue_1 = np.dot(blue, z_rot_mat)
         green_1 = np.dot(green, z_rot_mat)
 
-        blue2green = green_1 - blue_1   
+        blue2green = green_1 - blue_1
         temp_angle = np.arctan2(blue2green[2], blue2green[0])
         joint2_angle = (np.pi / 2) - temp_angle
 
@@ -97,7 +97,89 @@ class ProcessImages:
         joint3_angle = np.arccos(np.dot(arm_3, arm_2) / (np.linalg.norm(arm_2) * np.linalg.norm(arm_3)))
 
         self.angles = np.array([joint1_angle, 0, joint2_angle, joint3_angle])
-    
+
+    def jacobian_matrix(self, angles):
+        a, b, c, d = self.angles
+        sin = np.sin
+        cos = np.cos
+
+        jacobian_11 = np.array(
+            2*c(d)*(sin(b)*cos(c)*cos(a) - sin(c)*sin(a)) +
+            3*sin(b)*cos(c)*cos(a) +
+            2*sin(d)*cos(b)*cos(a) +
+            3*sin(c)*sin(a)
+        )
+
+        jacobian_12 = np.array(
+            2*cos(d)*sin(a)*cos(c)*cos(b) +
+            3*sin(a)*cos(c)*cos(b) -
+            2*sin(a)*sin(d)*sin(b)
+        )
+
+        jacobian_13 = np.array(
+            2*cos(d)*(cos(a)*cos(c) - sin(a)*sin(b)*sin(c)) +
+            3*cos(a)*cos(c) -
+            3*sin(a)*sin(b)*sin(c)
+        )
+
+        jacobian_14 = np.array(
+            2*sin(a)*cos(b)*cos(d) -
+            sin(d)*(cos(a)*sin(c) + sin(a)*sin(b)*cos(c))
+        )
+
+        jacobian_21 = np.array(
+            2*cos(d)*(cos(a)*sin(c) +
+            sin(a)*cos(c)*sin(b)) +
+            3*cos(a)*sin(c) +
+            3*sin(a)*cos(c)*sin(b) +
+            2*sin(a)*cos(b)*sin(d)
+        )
+
+        jacobian_22 = np.array(
+            2 * cos(a) * sin(b) * sin(d) -
+            2 * cos(a) * cos(c) * cos(b) * cos(d) -
+            3 * cos(a) * cos(c) * cos(b)
+        )
+
+        jacobian_23 = np.array(
+            2 * cos(d) * (sin(a) * cos(c) +
+            sin(b) * cos(a) * sin(c)) +
+            3 * sin(a) * cos(c) +
+            3 * sin(b) * cos(a) * sin(c)
+        )
+
+        jacobian_24 = np.array(
+            -2 * sin(d) * (sin(a) * sin(c) -
+            sin(b) * cos(a) * cos(c)) -
+            2 * cos(a) * cos(b) * cos(d)
+        )
+
+
+        jacobian_31 = np.array(
+            0
+        )
+
+        jacobian_32 = np.array(
+            -2*cos(b) * sin(d) -
+            2 * sin(b) * cos(d) * cos(c) -
+            3 * sin(b) * cos(c)
+        )
+
+        jacobian_33 = np.array(
+            -2 * cos(b) * cos(d) * sin(c) -
+            3 * cos(b) * sin(c)
+        )
+
+        jacobian_34 = np.array(
+            -2 * sin(b) * cos(d) -
+            2 * cos(b) * sin(d) * cos(c)
+        )
+
+        jac_row_1 = np.array(jacobian_11, jacobian_12, jacobian_13, jacobian_14)
+        jac_row_2 = np.array(jacobian_21, jacobian_22, jacobian_23, jacobian_24)
+        jac_row_3 = np.array(jacobian_31, jacobian_32, jacobian_33, jacobian_34)
+        return np.array(jac_row_1, jac_row_2, jac_row_3)
+
     def forward_kinematics(self):
         [a1, _, a2, a3] = self.angles
         [yellow, blue, green, red] = self.joint_positions
@@ -108,50 +190,50 @@ class ProcessImages:
         yellow = yellow - yellow
 
         yellow2blue = blue - yellow
-    # shift to green
+        # shift to green
         step1 = np.array([
             [np.cos(a1), -np.sin(a1), 0, 0],
             [np.sin(a1), np.cos(a1), 0, 0],
             [0, 0, 1, yellow2blue[2]],
             [0, 0, 0, 1]
         ])
-        blue_rot = np.dot(np.append(blue,1), step1)
-        green_rot = np.dot(np.append(green,1), step1)
+        blue_rot = np.dot(np.append(blue, 1), step1)
+        green_rot = np.dot(np.append(green, 1), step1)
         blue2green = green_rot - blue_rot
-        
+
         step2 = np.array([
             [np.cos(a2), 0, -np.sin(a2), blue2green[0]],
             [0, 1, 0, blue2green[1]],
             [np.sin(a2), 0, np.cos(a2), blue2green[2]],
             [0, 0, 0, 1]
         ])
-        
+
         green_rot2 = np.dot(green_rot, step2)
-        red_rot = np.dot(np.dot(np.append(red,1), step1),step2)
+        red_rot = np.dot(np.dot(np.append(red, 1), step1), step2)
         green2red = red_rot - green_rot2
-        
+
         step3 = np.array([
             [1, 0, 0, green2red[0]],
             [0, np.cos(a3), -np.sin(a3), blue2green[1]],
             [0, np.sin(a3), np.cos(a3), green2red[2]],
             [0, 0, 0, 1]
         ])
-        
-        FK = np.dot(np.dot(step1,step2),step3)
-        return FK[:,3][:3]
-    
+
+        FK = np.dot(np.dot(step1, step2), step3)
+        return FK[:, 3][:3]
+
     def manual_FK(self):
         [a1, _, a2, a3] = self.angles
-        
+
         FK = np.array([
-            [3*np.cos(a1)*np.sin(a2) + 2*np.cos(a3)*(-np.cos(a1)*np.sin(a2) - np.sin(a1)*np.cos(a2)) - 2*np.sin(a1)*np.sin(a3)],
-            [2*np.cos(a1)*np.sin(a3) + 3*np.sin(a1)*np.sin(a2) + 2*np.cos(a3)*(np.cos(a1)*np.cos(a2) - np.sin(a1)*np.sin(a2))],
-            [3*np.cos(a2) + 2*np.cos(a3) + 2]
+            [3 * np.cos(a1) * np.sin(a2) + 2 * np.cos(a3) * (
+                        -np.cos(a1) * np.sin(a2) - np.sin(a1) * np.cos(a2)) - 2 * np.sin(a1) * np.sin(a3)],
+            [2 * np.cos(a1) * np.sin(a3) + 3 * np.sin(a1) * np.sin(a2) + 2 * np.cos(a3) * (
+                        np.cos(a1) * np.cos(a2) - np.sin(a1) * np.sin(a2))],
+            [3 * np.cos(a2) + 2 * np.cos(a3) + 2]
         ])
-        print(FK/self.pixel_to_meter())
-    
-    
-    
+        print(FK / self.pixel_to_meter())
+
     def detect_target(self):
         if self.cv_image1 is not None and self.cv_image2 is not None:
             img_1_circles = detect_circles(self.cv_image1)
@@ -190,15 +272,15 @@ class ProcessImages:
     def update(self):
         self.get_joint_position()
         self.detect_joint_angles()
-        #self.detect_target()
-        #dist = self.distance_to_target()
+        # self.detect_target()
+        # dist = self.distance_to_target()
         fk = self.forward_kinematics()
-        print(fk, self.joint_positions[3]-self.joint_positions[0])
+        print(fk, self.joint_positions[3] - self.joint_positions[0])
         self.manual_FK()
-        #print(self.angles)
+        # print(self.angles)
 
 
-# call the class
+call the class
 def main(args):
     ic = ProcessImages()
     try:
