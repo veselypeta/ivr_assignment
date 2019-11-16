@@ -65,93 +65,102 @@ class ProcessImages:
             joint_positions.append([x, y, z])
         self.joint_positions = np.array(joint_positions)
 
+
+    def forward_kinematics(self,angles,arms):
+        [a1,a2,a3,a4] = angles
+        [arm1,arm2,arm3] = arms
+        M1 = np.array([
+            [np.cos(a1),-np.sin(a1),0,0],
+            [np.sin(a1),np.cos(a1),0,0],
+            [0,0,1,arm2],
+            [0,0,0,1]
+        ])
+        
+        M2 = np.array([
+            [1,0,0,0],
+            [0, np.cos(a2), -np.sin(a2),0],
+            [0, np.sin(a2),np.cos(a2),0],
+            [0,0,0,1]
+        ])
+        
+        M3 = np.array([
+            [np.cos(a3),0, np.sin(a3),np.sin(a3)*arm2],
+            [0,1,0,0],
+            [-np.sin(a3),0,np.cos(a2),np.cos(a3)*arm2],
+            [0,0,0,1]
+        ])
+        
+        M4 = np.array([
+            [1,0,0,0],
+            [0, np.cos(a4), -np.sin(a4),-np.sin(a4)*arm3],
+            [0, np.sin(a4),np.cos(a4),np.cos(a4)*arm3],
+            [0,0,0,1]
+        ])
+        
+        O = np.array([0,0,0,1])
+        Y = O
+        B = np.dot(M1,O)
+        G = np.dot(np.matmul(np.matmul(M1,M2),M3),O)
+        R = np.dot(np.matmul(np.matmul(np.matmul(M1,M2),M3),M4),O)
+        
+        return np.matmul(np.matmul(M1,M2),M3)[:3,:3]
+        
+        
+
     def detect_joint_angles(self):
         [yellow, blue, green, red] = self.joint_positions
-
+        a = self.pixel2meter()
         blue = blue - yellow
         green = green - yellow
         red = red - yellow
         yellow = yellow - yellow
 
-        yellow2blue = blue - yellow
-
-        g2b = green - blue
-        joint1_angle = np.arctan2(g2b[1],
-                                  g2b[0])
-
-        z_rot_mat = np.array([
-            [np.cos(joint1_angle), -np.sin(joint1_angle), 0],
-            [np.sin(joint1_angle), np.cos(joint1_angle), 0],
-            [0, 0, 1]
-        ])
-
-        blue_1 = np.dot(blue, z_rot_mat)
-        green_1 = np.dot(green, z_rot_mat)
-
-        blue2green = green_1 - blue_1   
-        temp_angle = np.arctan2(blue2green[2], blue2green[0])
-        joint2_angle = (np.pi / 2) - temp_angle
-
-        arm_2 = green - blue
-        arm_3 = red - green
-        joint3_angle = np.arccos(np.dot(arm_3, arm_2) / (np.linalg.norm(arm_2) * np.linalg.norm(arm_3)))
-
-        self.angles = np.array([joint1_angle, 0, joint2_angle, joint3_angle])
-    
-    def forward_kinematics(self):
-        [a1, _, a2, a3] = self.angles
-        [yellow, blue, green, red] = self.joint_positions
-
-        blue = blue - yellow
-        green = green - yellow
-        red = red - yellow
-        yellow = yellow - yellow
-
-        yellow2blue = blue - yellow
-    # shift to green
-        step1 = np.array([
-            [np.cos(a1), -np.sin(a1), 0, 0],
-            [np.sin(a1), np.cos(a1), 0, 0],
-            [0, 0, 1, yellow2blue[2]],
-            [0, 0, 0, 1]
-        ])
-        blue_rot = np.dot(np.append(blue,1), step1)
-        green_rot = np.dot(np.append(green,1), step1)
-        blue2green = green_rot - blue_rot
+        arm1 = np.linalg.norm(blue-yellow)
+        arm3 = np.linalg.norm(red-green)
+        arm2 = np.linalg.norm(green-blue)
         
-        step2 = np.array([
-            [np.cos(a2), 0, -np.sin(a2), blue2green[0]],
-            [0, 1, 0, blue2green[1]],
-            [np.sin(a2), 0, np.cos(a2), blue2green[2]],
-            [0, 0, 0, 1]
-        ])
+        Q = (red-green) 
+        P = (green-blue)
         
-        green_rot2 = np.dot(green_rot, step2)
-        red_rot = np.dot(np.dot(np.append(red,1), step1),step2)
-        green2red = red_rot - green_rot2
+        Z = P/np.linalg.norm(P)
+        X = np.cross(P, Q)/np.linalg.norm(np.cross(P, Q))
+        Y = np.cross(Z, X)
         
-        step3 = np.array([
-            [1, 0, 0, green2red[0]],
-            [0, np.cos(a3), -np.sin(a3), blue2green[1]],
-            [0, np.sin(a3), np.cos(a3), green2red[2]],
-            [0, 0, 0, 1]
-        ])
+        XYZ = [X, Y, Z]
         
-        FK = np.dot(np.dot(step1,step2),step3)
-        return FK[:,3][:3]
-    
-    def manual_FK(self):
-        [a1, _, a2, a3] = self.angles
         
-        FK = np.array([
-            [3*np.cos(a1)*np.sin(a2) + 2*np.cos(a3)*(-np.cos(a1)*np.sin(a2) - np.sin(a1)*np.cos(a2)) - 2*np.sin(a1)*np.sin(a3)],
-            [2*np.cos(a1)*np.sin(a3) + 3*np.sin(a1)*np.sin(a2) + 2*np.cos(a3)*(np.cos(a1)*np.cos(a2) - np.sin(a1)*np.sin(a2))],
-            [3*np.cos(a2) + 2*np.cos(a3) + 2]
-        ])
-        print(FK/self.pixel_to_meter())
-    
-    
-    
+        a1 = np.arctan2(-Y[0],Y[1])
+        a2 = np.arctan2(Y[2],Y[1]/np.cos(a1))
+        a3 = np.arctan2(-X[2],Z[2])
+        a4 = np.arccos(np.dot(P, Q)/np.linalg.norm(P)/np.linalg.norm(Q))
+        
+         
+        R1_3 = np.array([
+            [np.cos(a1)*np.cos(a3)-np.sin(a1)*np.sin(a2)*np.sin(a3), -np.sin(a1)*np.cos(a2), np.cos(a1)*np.sin(a3)+np.sin(a1)*np.sin(a2)*np.cos(a3)],
+            [np.sin(a1)*np.cos(a3)+np.cos(a1)*np.sin(a2)*np.sin(a3), np.cos(a1)*np.cos(a2), np.sin(a1)*np.sin(a3)-np.cos(a1)*np.sin(a2)*np.cos(a3)],
+            [-np.cos(a2)*np.sin(a3), np.sin(a2), np.cos(a2)*np.cos(a3)]
+            ])
+        
+        Z_x_error = np.absolute(np.absolute(Z[0]) - np.absolute(R1_3[0,2]))
+       
+        XYZ_ac = self.forward_kinematics([a1,a2,a3,a4],[arm1,arm2,arm3])
+
+        threshold = 0.3
+
+        if Z_x_error > threshold:
+            X = -X
+            Y = np.cross(Z,X)
+            a1 = np.arctan2(-Y[0],Y[1])
+            a2 = np.arctan2(Y[2],Y[1]/np.cos(a1))
+            a3 = np.arctan2(-X[2],Z[2])
+            a4 = -a4
+            
+      
+        joint_angles = np.array([a1,a2,a3,a4])
+        print(joint_angles)
+        self.angles = joint_angles
+
+
     def detect_target(self):
         if self.cv_image1 is not None and self.cv_image2 is not None:
             img_1_circles = detect_circles(self.cv_image1)
@@ -180,7 +189,8 @@ class ProcessImages:
             return mean
         except ZeroDivisionError:
             return 0
-
+            
+            
     def distance_to_target(self):
         p2m = self.pixel_to_meter()
         pixel_distance = np.linalg.norm(self.joint_positions[0] - self.target_position)
@@ -190,11 +200,10 @@ class ProcessImages:
     def update(self):
         self.get_joint_position()
         self.detect_joint_angles()
-        #self.detect_target()
-        #dist = self.distance_to_target()
-        fk = self.forward_kinematics()
-        print(fk, self.joint_positions[3]-self.joint_positions[0])
-        self.manual_FK()
+        # self.detect_target()
+        # dist = self.distance_to_target()
+        # fk = self.forward_kinematics()
+        # print(fk, self.joint_positions[3] - self.joint_positions[0])
         #print(self.angles)
 
 
