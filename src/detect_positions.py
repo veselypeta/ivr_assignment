@@ -71,9 +71,17 @@ class ProcessImages:
         self.joint_positions = np.array(joint_positions)
 
 
-    def forward_kinematics(self,angles,arms):
+    def forward_kinematics(self,angles):
         [a1,a2,a3,a4] = angles
-        [arm1,arm2,arm3] = arms
+        [yellow, blue, green, red] = self.joint_positions
+        blue = blue - yellow
+        green = green - yellow
+        red = red - yellow
+
+        arm1 = np.linalg.norm(blue-yellow)
+        arm3 = np.linalg.norm(red-green)
+        arm2 = np.linalg.norm(green-blue)
+       
         M1 = np.array([
             [np.cos(a1),-np.sin(a1),0,0],
             [np.sin(a1),np.cos(a1),0,0],
@@ -115,12 +123,12 @@ class ProcessImages:
 
 
     def jacobian_matrix(self, angles):
-        a, b, c, d = self.angles
+        a, b, c, d = angles
         sin = np.sin
         cos = np.cos
 
         jacobian_11 = np.array(
-            2*c(d)*(sin(b)*cos(c)*cos(a) - sin(c)*sin(a)) +
+            2*cos(d)*(sin(b)*cos(c)*cos(a) - sin(c)*sin(a)) +
             3*sin(b)*cos(c)*cos(a) +
             2*sin(d)*cos(b)*cos(a) +
             3*sin(c)*sin(a)
@@ -191,14 +199,13 @@ class ProcessImages:
             2 * cos(b) * sin(d) * cos(c)
         )
 
-        jac_row_1 = np.array(jacobian_11, jacobian_12, jacobian_13, jacobian_14)
-        jac_row_2 = np.array(jacobian_21, jacobian_22, jacobian_23, jacobian_24)
-        jac_row_3 = np.array(jacobian_31, jacobian_32, jacobian_33, jacobian_34)
-        return np.array(jac_row_1, jac_row_2, jac_row_3)
+        jac_row_1 = np.array([jacobian_11, jacobian_12, jacobian_13, jacobian_14])
+        jac_row_2 = np.array([jacobian_21, jacobian_22, jacobian_23, jacobian_24])
+        jac_row_3 = np.array([jacobian_31, jacobian_32, jacobian_33, jacobian_34])
+        return np.array([jac_row_1, jac_row_2, jac_row_3])
 
     def detect_joint_angles(self):
         [yellow, blue, green, red] = self.joint_positions
-        a = self.pixel2meter()
         blue = blue - yellow
         green = green - yellow
         red = red - yellow
@@ -232,7 +239,7 @@ class ProcessImages:
         
         Z_x_error = np.absolute(np.absolute(Z[0]) - np.absolute(R1_3[0,2]))
        
-        XYZ_ac = self.forward_kinematics([a1,a2,a3,a4],[arm1,arm2,arm3])
+        XYZ_ac = self.forward_kinematics([a1,a2,a3,a4])
 
         threshold = 0.3
 
@@ -296,9 +303,7 @@ class ProcessImages:
         # fk = self.forward_kinematics()
         # print(fk, self.joint_positions[3] - self.joint_positions[0])
         #print(self.angles)
-        fk = self.forward_kinematics()
-        print(fk, self.joint_positions[3] - self.joint_positions[0])
-        self.manual_FK()
+        
         self.publish_results()
         # print(self.angles)
 
@@ -308,9 +313,9 @@ class ProcessImages:
         pub_end_effector = Float64MultiArray()
         pub_end_effector.data = self.joint_positions[3]
         pub_jacobian = Float64MultiArray()
-        pub_jacobian.data = self.jacobian_matrix(self.angles)
+        pub_jacobian.data = self.jacobian_matrix(self.angles).flatten()
         pub_target_position = Float64MultiArray()
-        pub_target_position.data = self.target_position()
+        pub_target_position.data = self.target_position
 
 
         # publish

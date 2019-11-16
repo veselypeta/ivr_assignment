@@ -155,12 +155,8 @@
    <group>
         <node name="image1" pkg="ivr_assignment" type="image1.py" args="$(find ivr_assignment)/src/image1.py" />
         <node name="image2" pkg="ivr_assignment" type="image2.py" args="$(find ivr_assignment)/src/image2.py" />
-   </group>
-
-
-<!--Spawn camera recordings-->
-   <group>
         <node name="detect_positions" pkg="ivr_assignment" type="detect_positions.py" args="$(find ivr_assignment)/src/detect_positions.py" />
    </group>
+
 
 </launch>

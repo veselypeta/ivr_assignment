@@ -28,10 +28,10 @@ class control:
         self.trajectory = np.zeros(3)
         self.angles = np.zeros(4)
         self.jacobian = np.zeros([3,4])
-        self.trajectory_sub = rospy.Subscriber("target_topic", Float64MultiArray)
-        self.end_effector_sub = rospy.Subscriber("end_effector_topic", Float64MultiArray)
-        self.angles_sub = rospy.Subscriber("angles_topic", Float64MultiArray)
-        self.jacobian_sub = rospy.Subscriber("jacobian_topic", Float64MultiArray)
+        self.trajectory_sub = message_filters.Subscriber("target_topic", Float64MultiArray)
+        self.end_effector_sub = message_filters.Subscriber("end_effector_topic", Float64MultiArray)
+        self.angles_sub = message_filters.Subscriber("angles_topic", Float64MultiArray)
+        self.jacobian_sub = message_filters.Subscriber("jacobian_topic", Float64MultiArray)
         
         self.time_trajectory = rospy.get_time()
         self.time_previous_step = np.array([rospy.get_time()], dtype='float64')
@@ -39,16 +39,16 @@ class control:
         self.error = np.array([0,0,0], dtype='float64')
         self.error_d = np.array([0,0,0], dtype='float64')
 
-        ts = message_filters.TimeSynchronizer([self.trajectory_sub, self.end_effector_sub, self.angles_sub, self.jacobian_sub], 10)
+        ts = message_filters.ApproximateTimeSynchronizer([self.trajectory_sub, self.end_effector_sub, self.angles_sub, self.jacobian_sub], 10, 10, allow_headerless=True)
         ts.registerCallback(self.callback)
         
         
     def callback(self, trajectory, end_effector, angles, jacobian):
         # update values
-        self.trajectory = trajectory.data
-        self.end_effector = end_effector.data
-        self.angles = angles.data
-        self.jacobian = jacobian.data
+        self.trajectory = np.array(trajectory.data)
+        self.end_effector = np.array(end_effector.data)
+        self.angles = np.array(angles.data)
+        self.jacobian = np.array(jacobian.data).reshape((3,4))
 
         print(self.control_closed())
 
