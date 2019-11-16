@@ -158,4 +158,9 @@
    </group>
 
 
+<!--Spawn camera recordings-->
+   <group>
+        <node name="detect_positions" pkg="ivr_assignment" type="detect_positions.py" args="$(find ivr_assignment)/src/detect_positions.py" />
+   </group>
+
 </launch>
