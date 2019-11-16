@@ -107,6 +107,90 @@ class ProcessImages:
         
         
 
+
+
+    def jacobian_matrix(self, angles):
+        a, b, c, d = self.angles
+        sin = np.sin
+        cos = np.cos
+
+        jacobian_11 = np.array(
+            2*c(d)*(sin(b)*cos(c)*cos(a) - sin(c)*sin(a)) +
+            3*sin(b)*cos(c)*cos(a) +
+            2*sin(d)*cos(b)*cos(a) +
+            3*sin(c)*sin(a)
+        )
+
+        jacobian_12 = np.array(
+            2*cos(d)*sin(a)*cos(c)*cos(b) +
+            3*sin(a)*cos(c)*cos(b) -
+            2*sin(a)*sin(d)*sin(b)
+        )
+
+        jacobian_13 = np.array(
+            2*cos(d)*(cos(a)*cos(c) - sin(a)*sin(b)*sin(c)) +
+            3*cos(a)*cos(c) -
+            3*sin(a)*sin(b)*sin(c)
+        )
+
+        jacobian_14 = np.array(
+            2*sin(a)*cos(b)*cos(d) -
+            sin(d)*(cos(a)*sin(c) + sin(a)*sin(b)*cos(c))
+        )
+
+        jacobian_21 = np.array(
+            2*cos(d)*(cos(a)*sin(c) +
+            sin(a)*cos(c)*sin(b)) +
+            3*cos(a)*sin(c) +
+            3*sin(a)*cos(c)*sin(b) +
+            2*sin(a)*cos(b)*sin(d)
+        )
+
+        jacobian_22 = np.array(
+            2 * cos(a) * sin(b) * sin(d) -
+            2 * cos(a) * cos(c) * cos(b) * cos(d) -
+            3 * cos(a) * cos(c) * cos(b)
+        )
+
+        jacobian_23 = np.array(
+            2 * cos(d) * (sin(a) * cos(c) +
+            sin(b) * cos(a) * sin(c)) +
+            3 * sin(a) * cos(c) +
+            3 * sin(b) * cos(a) * sin(c)
+        )
+
+        jacobian_24 = np.array(
+            -2 * sin(d) * (sin(a) * sin(c) -
+            sin(b) * cos(a) * cos(c)) -
+            2 * cos(a) * cos(b) * cos(d)
+        )
+
+
+        jacobian_31 = np.array(
+            0
+        )
+
+        jacobian_32 = np.array(
+            -2*cos(b) * sin(d) -
+            2 * sin(b) * cos(d) * cos(c) -
+            3 * sin(b) * cos(c)
+        )
+
+        jacobian_33 = np.array(
+            -2 * cos(b) * cos(d) * sin(c) -
+            3 * cos(b) * sin(c)
+        )
+
+        jacobian_34 = np.array(
+            -2 * sin(b) * cos(d) -
+            2 * cos(b) * sin(d) * cos(c)
+        )
+
+        jac_row_1 = np.array(jacobian_11, jacobian_12, jacobian_13, jacobian_14)
+        jac_row_2 = np.array(jacobian_21, jacobian_22, jacobian_23, jacobian_24)
+        jac_row_3 = np.array(jacobian_31, jacobian_32, jacobian_33, jacobian_34)
+        return np.array(jac_row_1, jac_row_2, jac_row_3)
+
     def detect_joint_angles(self):
         [yellow, blue, green, red] = self.joint_positions
         a = self.pixel2meter()
@@ -161,6 +245,8 @@ class ProcessImages:
         self.angles = joint_angles
 
 
+
+
     def detect_target(self):
         if self.cv_image1 is not None and self.cv_image2 is not None:
             img_1_circles = detect_circles(self.cv_image1)
@@ -205,9 +291,13 @@ class ProcessImages:
         # fk = self.forward_kinematics()
         # print(fk, self.joint_positions[3] - self.joint_positions[0])
         #print(self.angles)
+        fk = self.forward_kinematics()
+        print(fk, self.joint_positions[3] - self.joint_positions[0])
+        self.manual_FK()
+        # print(self.angles)
 
 
-# call the class
+call the class
 def main(args):
     ic = ProcessImages()
     try:
