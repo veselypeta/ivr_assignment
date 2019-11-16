@@ -2,7 +2,7 @@
 
 import rospy
 from sensor_msgs.msg import Image
-from std_msgs.msg import Float64MultiArray
+from std_msgs.msg import Float64MultiArray, Float64
 import numpy as np
 import cv2
 import sys
@@ -19,6 +19,11 @@ class ProcessImages:
         self.joints_sub2 = rospy.Subscriber("joints_pos_image_2", Float64MultiArray, self.callback2)
         self.image_1_sub = rospy.Subscriber("image_topic1", Image, self.callback_img_1)
         self.image_1_sub = rospy.Subscriber("image_topic2", Image, self.callback_img_2)
+
+        self.target_publisher = rospy.Publisher('target_topic', Float64MultiArray, queue_size=10)
+        self.angles_publisher = rospy.Publisher('target_topic', Float64MultiArray, queue_size=10)
+        self.end_effector_publisher= rospy.Publisher('target_topic', Float64MultiArray, queue_size=10)
+        self.jacobian_publisher = rospy.Publisher('target_topic', Float64MultiArray, queue_size=10)
 
         self.image_1_joints = np.zeros((4, 2))
         self.image_2_joints = np.zeros((4, 2))
@@ -294,10 +299,27 @@ class ProcessImages:
         fk = self.forward_kinematics()
         print(fk, self.joint_positions[3] - self.joint_positions[0])
         self.manual_FK()
+        self.publish_results()
         # print(self.angles)
 
+    def publish_results(self):
+        pub_angles = Float64MultiArray()
+        pub_angles.data = self.angles
+        pub_end_effector = Float64MultiArray()
+        pub_end_effector.data = self.joint_positions[3]
+        pub_jacobian = Float64MultiArray()
+        pub_jacobian.data = self.jacobian_matrix(self.angles)
+        pub_target_position = Float64MultiArray()
+        pub_target_position.data = self.target_position()
 
-call the class
+
+        # publish
+        self.target_publisher.publish(pub_target_position)
+        self.jacobian_publisher.publish(pub_jacobian)
+        self.end_effector_publisher.publish(pub_end_effector)
+        self.angles_publisher.publish(pub_angles)
+
+
 def main(args):
     ic = ProcessImages()
     try:
