@@ -40,6 +40,7 @@ class control:
         self.time_previous_step2 = np.array([rospy.get_time()], dtype='float64')
         self.error = np.array([0,0,0], dtype='float64')
         self.error_d = np.array([0,0,0], dtype='float64')
+        self.prev_angles = None
 
         ts = message_filters.ApproximateTimeSynchronizer([self.trajectory_sub, self.end_effector_sub, self.angles_sub, self.jacobian_sub], 10, 10, allow_headerless=True)
         ts.registerCallback(self.callback)
@@ -53,6 +54,12 @@ class control:
         self.jacobian = np.array(jacobian.data).reshape((3,4))
 
         q_d = self.control_closed()
+        
+        #q_d = np.mod(q_d,2*np.pi)
+        
+        if np.any(np.isnan(q_d)):
+            return
+            
         joint0 = Float64()
         joint0.data = q_d[0]
         joint1 = Float64()
@@ -67,7 +74,7 @@ class control:
         self.robot_joint4_pub.publish(joint3)
 
     def control_closed(self):
-        K_p = 10 * np.identity(3)
+        K_p = 5 * np.identity(3)
         K_d = 0.1 * np.identity(3)
         cur_time = np.array([rospy.get_time()])
         dt = cur_time - self.time_previous_step
@@ -77,6 +84,12 @@ class control:
         self.error_d = ((pos_d - pos) - self.error)/dt
         self.error = pos_d - pos
         q = self.angles
+        
+        if self.prev_angles is not None:
+            if np.max(np.absolute(self.angles) - np.absolute(self.prev_angles)) >= np.pi/2:
+                q = -self.angles
+                self.prev_angles = q
+            
         J_inv = np.linalg.pinv(self.jacobian)
         dq_d = np.dot(J_inv, (np.dot(K_d, self.error_d.transpose()) + np.dot(K_p, self.error.transpose())))
         q_d = q + (dt * dq_d)
