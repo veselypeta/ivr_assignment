@@ -8,17 +8,20 @@ import cv2
 import sys
 from cv_bridge import CvBridge, CvBridgeError
 from detect_centres import *
-
+import message_filters
 
 class ProcessImages:
 
     def __init__(self):
         rospy.init_node('detect_positions', anonymous=True)
 
-        self.joints_sub1 = rospy.Subscriber("joints_pos_image_1", Float64MultiArray, self.callback1)
-        self.joints_sub2 = rospy.Subscriber("joints_pos_image_2", Float64MultiArray, self.callback2)
-        self.image_1_sub = rospy.Subscriber("image_topic1", Image, self.callback_img_1)
-        self.image_1_sub = rospy.Subscriber("image_topic2", Image, self.callback_img_2)
+        self.joints_sub1 = message_filters.Subscriber("joints_pos_image_1", Float64MultiArray)
+        self.joints_sub2 = message_filters.Subscriber("joints_pos_image_2", Float64MultiArray)
+        # self.image_1_sub = message_filters.Subscriber("image_topic1", Image, self.callback_img_1)
+        # self.image_1_sub = message_filters.Subscriber("image_topic2", Image, self.callback_img_2)
+
+        ts = message_filters.ApproximateTimeSynchronizer([self.joints_sub1, self.joints_sub2], 10, 10, allow_headerless=True)
+        ts.registerCallback(self.callback)
 
         self.target_publisher = rospy.Publisher('target_topic', Float64MultiArray, queue_size=10)
         self.angles_publisher = rospy.Publisher('angles_topic', Float64MultiArray, queue_size=10)
@@ -37,25 +40,29 @@ class ProcessImages:
         self.cv_image2 = None
         self.target_position = np.zeros(3)
 
-    def callback_img_1(self, data):
-        try:
-            self.cv_image1 = self.bridge.imgmsg_to_cv2(data, "bgr8")
-        except CvBridgeError as e:
-            print(e)
+    # def callback_img_1(self, data):
+    #     try:
+    #         self.cv_image1 = self.bridge.imgmsg_to_cv2(data, "bgr8")
+    #     except CvBridgeError as e:
+    #         print(e)
+    #
+    # def callback_img_2(self, data):
+    #     try:
+    #         self.cv_image2 = self.bridge.imgmsg_to_cv2(data, "bgr8")
+    #     except CvBridgeError as e:
+    #         print(e)
 
-    def callback_img_2(self, data):
-        try:
-            self.cv_image2 = self.bridge.imgmsg_to_cv2(data, "bgr8")
-        except CvBridgeError as e:
-            print(e)
-
-    def callback2(self, data):
-        self.image_2_joints = np.array(data.data).reshape((4, 2))
-        # self.update()
-
-    def callback1(self, data):
-        self.image_1_joints = np.array(data.data).reshape((4, 2))
-        # self.update()
+    def callback(self, image1, image2):
+        self.image_1_joints = np.array(image1.data).reshape((4, 2))
+        self.image_2_joints = np.array(image2.data).reshape((4, 2))
+        self.update()
+    # def callback2(self, data):
+    #     self.image_2_joints = np.array(data.data).reshape((4, 2))
+    #     # self.update()
+    #
+    # def callback1(self, data):
+    #     self.image_1_joints = np.array(data.data).reshape((4, 2))
+    #     # self.update()
 
     def get_joint_position(self):
         joint_positions = []
