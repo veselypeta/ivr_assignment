@@ -53,10 +53,18 @@ class control:
         self.jacobian = np.array(jacobian.data).reshape((3,4))
 
         q_d = self.control_closed()
-        self.robot_joint1_pub.publish(self.q_d[0])
-        self.robot_joint2_pub.publish(self.q_d[1])
-        self.robot_joint3_pub.publish(self.q_d[2])
-        self.robot_joint4_pub.publish(self.q_d[3])
+        joint0 = Float64()
+        joint0.data = q_d[0]
+        joint1 = Float64()
+        joint1.data = q_d[1]
+        joint2 = Float64()
+        joint2.data = q_d[2]
+        joint3 = Float64()
+        joint3.data = q_d[3]
+        self.robot_joint1_pub.publish(joint0)
+        self.robot_joint2_pub.publish(joint1)
+        self.robot_joint3_pub.publish(joint2)
+        self.robot_joint4_pub.publish(joint3)
 
     def control_closed(self):
         K_p = 10 * np.identity(3)
