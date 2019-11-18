@@ -69,10 +69,13 @@ class ProcessImages:
         for i in range(self.image_1_joints.shape[0]):
             xz_plane = self.image_2_joints[i]
             yz_plane = self.image_1_joints[i]
-            # print(self.image_1_joints)
-            # print(yz_plane)
             x = xz_plane[0]
             y = yz_plane[0]
+            if np.any(xz_plane == 0):
+                x = self.joint_positions[0]
+            if np.any(yz_plane) == 0:
+                y = self.joint_positions[1]
+
             z = 800 - (xz_plane[1] + yz_plane[1]) / 2  # have z be the average from both cameras
             joint_positions.append([x, y, z])
         self.joint_positions = np.array(joint_positions)

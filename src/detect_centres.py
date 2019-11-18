@@ -12,6 +12,7 @@ def detect_red(image):
     # Obtain the moments of the binary image
     M = cv2.moments(mask)
     # Calculate pixel coordinates for the centre of the blob
+
     if M['m00'] != 0:
         cx = int(M['m10'] / M['m00'])
         cy = int(M['m01'] / M['m00'])

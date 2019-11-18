@@ -43,7 +43,7 @@ class image_converter:
         joints = Float64MultiArray()
         joints.data = np.array([yellow_circle, blue_circle, green_circle, red_circle]).flatten()
 
-        # Uncomment if you want to save the image
+        # Uncomment if you want to save the image`
         # cv2.imwrite('image_copy.png', cv_image)
 
         im1 = cv2.imshow('window1', self.cv_image1)
