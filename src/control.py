@@ -68,8 +68,6 @@ class control:
         q_d = q + (dt * dq_d)
         return q_d
 
-      
-
 
 # call the class
 def main(args):
