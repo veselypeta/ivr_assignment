@@ -17,12 +17,14 @@ class control:
 
     # Defines publisher and subscriber
     def __init__(self):
-        # initialize the node named image_processing
+
         rospy.init_node('closed_control', anonymous=True)
-        # initialize a publisher to send images from camera1 to a topic named image_topic1
-        self.image_pub1 = rospy.Publisher("image_topic1", Image, queue_size=10)
-        self.joints_pub = rospy.Publisher("joints_pos_image_1", Float64MultiArray, queue_size=10)
-        # initialize a subscriber to recieve messages rom a topic named /robot/camera1/image_raw and use callback
+
+        self.robot_joint1_pub = rospy.Publisher("/robot/joint1_position_controller/command", Float64, queue_size=10)
+        self.robot_joint2_pub = rospy.Publisher("/robot/joint2_position_controller/command", Float64, queue_size=10)
+        self.robot_joint3_pub = rospy.Publisher("/robot/joint3_position_controller/command", Float64, queue_size=10)
+        self.robot_joint4_pub = rospy.Publisher("/robot/joint4_position_controller/command", Float64, queue_size=10)
+
         # function to recieve data
         self.end_effector = np.zeros(3)
         self.trajectory = np.zeros(3)
@@ -50,7 +52,11 @@ class control:
         self.angles = np.array(angles.data)
         self.jacobian = np.array(jacobian.data).reshape((3,4))
 
-        print(self.control_closed())
+        q_d = self.control_closed()
+        self.robot_joint1_pub.publish(self.q_d[0])
+        self.robot_joint2_pub.publish(self.q_d[1])
+        self.robot_joint3_pub.publish(self.q_d[2])
+        self.robot_joint4_pub.publish(self.q_d[3])
 
     def control_closed(self):
         K_p = 10 * np.identity(3)
