@@ -31,7 +31,6 @@ class ProcessImages:
         self.angles_publisher = rospy.Publisher('angles_topic', Float64MultiArray, queue_size=10)
         self.end_effector_publisher = rospy.Publisher('end_effector_topic', Float64MultiArray, queue_size=10)
         self.jacobian_publisher = rospy.Publisher('jacobian_topic', Float64MultiArray, queue_size=10)
-        self.plot_target = rospy.Publisher('plot_target_topic', Float64MultiArray, queue_size=10)
 
         self.image_1_joints = np.zeros((4, 2))
         self.image_2_joints = np.zeros((4, 2))
@@ -609,7 +608,7 @@ class ProcessImages:
         # pub_jacobian.data = self.jacobian_matrix(self.angles).flatten()
         # pub_target_position = Float64MultiArray()
         # pub_target_position.data = self.target_position
-        min_angles_2 = self.minimising_angles_without2()
+        min_angles_2 = self.minimising_angles()
         pub_angles = Float64MultiArray()
         pub_angles.data = min_angles_2.x
         pub_end_effector = Float64MultiArray()
@@ -618,14 +617,11 @@ class ProcessImages:
         pub_jacobian.data = min_angles_2.jac.flatten() * self.pixel_to_meter()
         pub_target_position = Float64MultiArray()
         pub_target_position.data = self.target_position * self.pixel_to_meter()
-        pub_plot_target = Float64MultiArray()
-        pub_plot_target.data = (self.target_position - self.joint_positions[0]) * self.pixel_to_meter()
         # publish
         self.target_publisher.publish(pub_target_position)
         self.jacobian_publisher.publish(pub_jacobian)
         self.end_effector_publisher.publish(pub_end_effector)
         self.angles_publisher.publish(pub_angles)
-        self.plot_target.publish(pub_plot_target)
 
 
 def main(args):

@@ -71,6 +71,7 @@ class control:
         joint2.data = q_d[1]
         joint3 = Float64()
         joint3.data = q_d[2]
+     
         self.robot_joint1_pub.publish(joint0)
         self.robot_joint2_pub.publish(joint1)
         self.robot_joint3_pub.publish(joint2)
@@ -87,12 +88,6 @@ class control:
         self.error_d = ((pos_d - pos) - self.error)/dt
         self.error = pos_d - pos
         q = self.angles
-        
-        # if self.prev_angles is not None:
-        #     if np.max(np.absolute(self.angles) - np.absolute(self.prev_angles)) >= np.pi/2:
-        #         q = -self.angles
-        #         self.prev_angles = q
-        #
         J_inv = np.linalg.pinv(self.jacobian)
         dq_d = np.dot(J_inv, (np.dot(K_d, self.error_d.transpose()) + np.dot(K_p, self.error.transpose())))
         q_d = q + (dt * dq_d)
