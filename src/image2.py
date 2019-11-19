@@ -15,7 +15,7 @@ class image_converter:
 
     def __init__(self):
         rospy.init_node('image_processing_2', anonymous=True)
-        self.image_pub2 = rospy.Publisher("image_topic2", Image, queue_size=1)
+        self.image_pub2 = rospy.Publisher("image_topic2", Image, queue_size=10)
         self.joints_pub = rospy.Publisher("joints_pos_image_2", Float64MultiArray, queue_size=10)
         self.image_sub2 = rospy.Subscriber("/camera2/robot/image_raw", Image, self.callback2)
         self.bridge = CvBridge()
@@ -27,7 +27,7 @@ class image_converter:
             print(e)
         # Uncomment if you want to save the image
         # cv2.imwrite('image_copy.png', cv_image)
-        im2 = cv2.imshow('window2', self.cv_image2)
+        # im2 = cv2.imshow('window2', self.cv_image2)
         cv2.waitKey(1)
 
         yellow_circle = detect_yellow(self.cv_image2)

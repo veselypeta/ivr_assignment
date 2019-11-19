@@ -29,7 +29,7 @@ class control:
         self.end_effector = np.zeros(3)
         self.trajectory = np.zeros(3)
         self.angles = np.zeros(4)
-        self.jacobian = np.zeros([3,4])
+        self.jacobian = np.zeros([3,3])
         self.trajectory_sub = message_filters.Subscriber("target_topic", Float64MultiArray)
         self.end_effector_sub = message_filters.Subscriber("end_effector_topic", Float64MultiArray)
         self.angles_sub = message_filters.Subscriber("angles_topic", Float64MultiArray)
@@ -47,34 +47,37 @@ class control:
         
         
     def callback(self, trajectory, end_effector, angles, jacobian):
-        # update values
+
         self.trajectory = np.array(trajectory.data)
         self.end_effector = np.array(end_effector.data)
         self.angles = np.array(angles.data)
-        self.jacobian = np.array(jacobian.data).reshape((3,4))
+        self.jacobian = np.array(jacobian.data).reshape((3,3))
+
+        # print(self.trajectory, self.end_effector)
 
         q_d = self.control_closed()
         
         #q_d = np.mod(q_d,2*np.pi)
         
         if np.any(np.isnan(q_d)):
+            print("was nan")
             return
             
         joint0 = Float64()
         joint0.data = q_d[0]
         joint1 = Float64()
-        joint1.data = q_d[1]
+        joint1.data = 0
         joint2 = Float64()
-        joint2.data = q_d[2]
+        joint2.data = q_d[1]
         joint3 = Float64()
-        joint3.data = q_d[3]
+        joint3.data = q_d[2]
         self.robot_joint1_pub.publish(joint0)
         self.robot_joint2_pub.publish(joint1)
         self.robot_joint3_pub.publish(joint2)
         self.robot_joint4_pub.publish(joint3)
 
     def control_closed(self):
-        K_p = 5 * np.identity(3)
+        K_p = 3 * np.identity(3)
         K_d = 0.1 * np.identity(3)
         cur_time = np.array([rospy.get_time()])
         dt = cur_time - self.time_previous_step
@@ -85,11 +88,11 @@ class control:
         self.error = pos_d - pos
         q = self.angles
         
-        if self.prev_angles is not None:
-            if np.max(np.absolute(self.angles) - np.absolute(self.prev_angles)) >= np.pi/2:
-                q = -self.angles
-                self.prev_angles = q
-            
+        # if self.prev_angles is not None:
+        #     if np.max(np.absolute(self.angles) - np.absolute(self.prev_angles)) >= np.pi/2:
+        #         q = -self.angles
+        #         self.prev_angles = q
+        #
         J_inv = np.linalg.pinv(self.jacobian)
         dq_d = np.dot(J_inv, (np.dot(K_d, self.error_d.transpose()) + np.dot(K_p, self.error.transpose())))
         q_d = q + (dt * dq_d)
