@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-rom std_msgs.msg import Float64MultiArray, Float64
+from std_msgs.msg import Float64MultiArray, Float64
 import numpy as np
 import cv2
 import sys
@@ -12,13 +12,14 @@ import message_filters
 class Result:
 
     def __init__(self):
-
-        self.j1_sub = rospy.Subscriber('/robot/joint1_position_controller/command', Float64)
-        self.j2sub = rospy.Subscriber('/robot/joint2_position_controller/command', Float64)
-        self.j3_sub = rospy.Subscriber('/robot/joint3_position_controller/command', Float64)
-        self.j4_sub = rospy.Subscriber('/robot/joint4_position_controller/command', Float64)
+        rospy.init_node("fk_result_calculator",anonymous=True)
+        self.j1_sub = message_filters.Subscriber('/robot/joint1_position_controller/command', Float64)
+        self.j2sub = message_filters.Subscriber('/robot/joint2_position_controller/command', Float64)
+        self.j3_sub = message_filters.Subscriber('/robot/joint3_position_controller/command', Float64)
+        self.j4_sub = message_filters.Subscriber('/robot/joint4_position_controller/command', Float64)
 
         self.fk_pub = rospy.Publisher('fk_topic', Float64MultiArray, queue_size=10)
+        self.joints = [0,0,0,0]
 
         ts = message_filters.ApproximateTimeSynchronizer([self.j1_sub, self.j2sub, self.j3_sub, self.j4_sub,
                                                           ], 10, 10, allow_headerless=True)
@@ -26,20 +27,18 @@ class Result:
 
 
     def callback(self, j1, j2, j3, j4):
-        self.joints = np.array([j1, j2, j3, j4])
+        self.joints = np.array([j1.data, j2.data, j3.data, j4.data])
         self.update()
 
 
 
     def working_forward_kinematics(self, x):
         a1, a2, a3, a4 = x
-
         arm1len = 2
         arm2len = 3
         arm3len = 2
 
-        c = np.cos
-        s = np.sin
+     
 
         yellow_rot = np.array([
             [np.cos(a1), -np.sin(a1), 0.0, 0],
@@ -59,8 +58,8 @@ class Result:
 
         T2 = np.array([
             [1, 0, 0, 0],
-            [0, c(a2), -s(a2), 0],
-            [0, s(a2), c(a2), 0],
+            [0, np.cos(a2), -np.sin(a2), 0],
+            [0, np.sin(a2), np.cos(a2), 0],
             [0, 0, 0, 1]
         ])
 
@@ -102,7 +101,8 @@ class Result:
     def update(self):
         fk_publish = Float64MultiArray()
         fk_publish.data = self.working_forward_kinematics(self.joints)
-        self.fk_pub.Publish(fk_publish)
+        self.fk_pub.publish(fk_publish)
+        print(fk_publish.data)
 
 
 
