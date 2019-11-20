@@ -60,7 +60,7 @@ class ProcessImages:
         return least_squares(self.distance_to_end_effector, [0.5, 0.5, 0.5, 0.5])
 
     def minimising_angles_without2(self):
-        x = self.joint_positions[3] - self.joint_positions[0]
+        # x = self.joint_positions[3] - self.joint_positions[0]
         return least_squares(self.without2_error, [0.5, 0.5, 0.5], bounds=([0, 0, 0], [np.pi/2, np.pi/2, np.pi/2]))
 
 
