@@ -25,11 +25,11 @@ class control:
         self.end_effector = np.zeros(3)
         self.trajectory = np.zeros(3)
         self.angles = np.zeros(4)
-        self.jacobian = np.zeros([3, 4],dtype='float64')
+        self.jacobian = np.zeros([3, 4], dtype='float64')
         self.trajectory_sub = message_filters.Subscriber("target_topic", Float64MultiArray)
         self.end_effector_sub = message_filters.Subscriber("end_effector_topic", Float64MultiArray)
-        #self.angles_sub = message_filters.Subscriber("angles_topic", Float64MultiArray)
-        #self.jacobian_sub = message_filters.Subscriber("jacobian_topic", Float64MultiArray)
+        # self.angles_sub = message_filters.Subscriber("angles_topic", Float64MultiArray)
+        # self.jacobian_sub = message_filters.Subscriber("jacobian_topic", Float64MultiArray)
 
         self.time_trajectory = rospy.get_time()
         self.time_previous_step = np.array([rospy.get_time()], dtype='float64')
@@ -72,18 +72,24 @@ class control:
         self.robot_joint3_pub.publish(joint2)
         self.robot_joint4_pub.publish(joint3)
 
-
-
     def control_closed(self):
-        K_p = 2 * np.identity(3)
-        K_d = 0.1 * np.identity(3)
+        # ----- gains -----
+        K_p = 0.5 * np.identity(3)
+        K_d = 0.01 * np.identity(3)
+
+        # ----- time step -----
         cur_time = np.array([rospy.get_time()])
         dt = cur_time - self.time_previous_step
         self.time_previous_step = cur_time
+
+        # ----- ef pos and trajectory -----
         pos = self.end_effector
         pos_d = self.trajectory
+
+        # ----- error -----
         self.error_d = ((pos_d - pos) - self.error) / dt
         self.error = pos_d - pos
+
         q = self.angles
         J_inv = np.linalg.pinv(self.empty_jacobian(q))
         dq_d = np.dot(J_inv, (np.dot(K_d, self.error_d.transpose()) + np.dot(K_p, self.error.transpose())))
@@ -98,48 +104,48 @@ class control:
     def empty_jacobian(self, x):
         a1, a2, a3, a4 = x
 
-        o = 2 #np.linalg.norm(blue - yellow)
-        q = 2 #np.linalg.norm(red - green)
-        p = 3 #np.linalg.norm(green - blue)
-        
-        a,b,c,d = symbols('a b c d', real=True)
-        
-        #FK_row1 = p*sin(a)*sin(b)*cos(c) + p*sin(c)*cos(a) + q*(sin(a)*sin(b)*cos(c) + sin(c)*cos(a))*cos(d) + q*sin(a)*sin(d)*cos(b)
-        #FK_row2 = p*sin(a)*sin(c) - p*sin(b)*cos(a)*cos(c) + q*(sin(a)*sin(c) - sin(b)*cos(a)*cos(c))*cos(d) - q*sin(d)*cos(a)*cos(b)
-        #FK_row3 = o + p*cos(b)*cos(c) - q*sin(b)*sin(d) + q*cos(b)*cos(c)*cos(d)
+        # o = 2 #np.linalg.norm(blue - yellow)
+        # q = 2 #np.linalg.norm(red - green)
+        # p = 3 #np.linalg.norm(green - blue)
+
+        a, b, c, d = symbols('a b c d', real=True)
+
+        # FK_row1 = p*sin(a)*sin(b)*cos(c) + p*sin(c)*cos(a) + q*(sin(a)*sin(b)*cos(c) + sin(c)*cos(a))*cos(d) + q*sin(a)*sin(d)*cos(b)
+        # FK_row2 = p*sin(a)*sin(c) - p*sin(b)*cos(a)*cos(c) + q*(sin(a)*sin(c) - sin(b)*cos(a)*cos(c))*cos(d) - q*sin(d)*cos(a)*cos(b)
+        # FK_row3 = o + p*cos(b)*cos(c) - q*sin(b)*sin(d) + q*cos(b)*cos(c)*cos(d)
         fk = self.FK()
         FK_row1 = fk[0]
         FK_row2 = fk[1]
-        FK_row3 = fk[2]   
-        
-        jacob = np.zeros([3, 4],dtype='float64')
-        subst = [(a,a1),(b,a2),(c,a3),(d,a4)]
-        jacob = Matrix([[float(diff(FK_row1,a).subs(subst).evalf()),float(diff(FK_row1,b).subs(subst).evalf()),float(diff(FK_row1,c).subs(subst).evalf()),float(diff(FK_row1,d).subs(subst).evalf())],
-                         [float(diff(FK_row2,a).subs(subst).evalf()),float(diff(FK_row2,b).subs(subst).evalf()),float(diff(FK_row2,c).subs(subst).evalf()),float(diff(FK_row2,d).subs(subst).evalf())],
-                         [float(diff(FK_row3,a).subs(subst).evalf()),float(diff(FK_row3,b).subs(subst).evalf()),float(diff(FK_row3,c).subs(subst).evalf()),float(diff(FK_row3,d).subs(subst).evalf())]])
-                         
+        FK_row3 = fk[2]
+
+        # jacob = np.zeros([3, 4],dtype='float64')
+        subst = [(a, a1), (b, a2), (c, a3), (d, a4)]
+        jacob = Matrix([[float(diff(FK_row1, a).subs(subst).evalf()), float(diff(FK_row1, b).subs(subst).evalf()),
+                         float(diff(FK_row1, c).subs(subst).evalf()), float(diff(FK_row1, d).subs(subst).evalf())],
+                        [float(diff(FK_row2, a).subs(subst).evalf()), float(diff(FK_row2, b).subs(subst).evalf()),
+                         float(diff(FK_row2, c).subs(subst).evalf()), float(diff(FK_row2, d).subs(subst).evalf())],
+                        [float(diff(FK_row3, a).subs(subst).evalf()), float(diff(FK_row3, b).subs(subst).evalf()),
+                         float(diff(FK_row3, c).subs(subst).evalf()), float(diff(FK_row3, d).subs(subst).evalf())]])
+
         return np.array(jacob).astype(np.float64)
-        
-        
-        
+
     def FK(self):
-        
-        a,b,c,d,l = symbols('a b c d l', real=True)
-        
+        a, b, c, d, l = symbols('a b c d l', real=True)
+
         trans = Matrix([
-            [1,0,0,0],
-            [0,1,0,0],
-            [0,0,1,l],
-            [0,0,0,1]
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, l],
+            [0, 0, 0, 1]
         ])
-        
+
         x_rot1 = Matrix([
             [1, 0, 0, 0],
             [0, cos(b), -sin(b), 0],
             [0, sin(b), cos(b), 0],
             [0, 0, 0, 1],
         ])
-        
+
         x_rot2 = Matrix([
             [1, 0, 0, 0],
             [0, cos(d), -sin(d), 0],
@@ -160,8 +166,9 @@ class control:
             [0.0, 0.0, 1.0, 0],
             [0, 0, 0, 1]
         ])
-        
+
         return (z_rot * trans.subs(l, 2) * x_rot1 * y_rot * trans.subs(l, 3) * x_rot2 * trans.subs(l, 2)).col(-1)
+
 
 # call the class
 def main(args):
