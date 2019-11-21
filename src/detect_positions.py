@@ -9,6 +9,7 @@ import sys
 from cv_bridge import CvBridge, CvBridgeError
 from detect_centres import *
 import message_filters
+from sympy import symbols, diff
 
 from scipy.optimize import least_squares
 
@@ -223,29 +224,63 @@ class ProcessImages:
         R = np.dot(np.matmul(np.matmul(np.matmul(M1, M2), M3), M4), O)
 
         return np.matmul(np.matmul(M1, M2), M3)[:3, :3]
+        
+    def empty_jacobian(self):
+        [yellow, blue, green, red] = self.joint_positions
+        blue = blue - yellow
+        green = green - yellow
+        red = red - yellow
 
+        o = np.linalg.norm(blue - yellow)
+        q = np.linalg.norm(red - green)
+        p = np.linalg.norm(green - blue)
+        
+        sin = np.sin
+        cos = np.cos
+    
+        FK_row1 = p*sin(a)*sin(b)*cos(c) + p*sin(c)*cos(a) + q*(sin(a)*sin(b)*cos(c) + sin(c)*cos(a))*cos(d) + q*sin(a)*sin(d)*cos(b)
+        FK_row2 = p*sin(a)*sin(c) - p*sin(b)*cos(a)*cos(c) + q*(sin(a)*sin(c) - sin(b)*cos(a)*cos(c))*cos(d) - q*sin(d)*cos(a)*cos(b)
+        FK_row3 = o + p*cos(b)*cos(c) - q*sin(b)*sin(d) + q*cos(b)*cos(c)*cos(d)
+        
+        jacob = np.zeros([3, 4])
+        a,b,c,d = symbols('a b c d', real = True)
+        jacob = np.array([[diff(FK_row1,a),diff(FK_row1,b),diff(FK_row1,c),diff(FK_row1,d)],
+                         [diff(FK_row2,a),diff(FK_row2,b),diff(FK_row2,c),diff(FK_row2,d)],
+                         [diff(FK_row3,a),diff(FK_row3,b),diff(FK_row3,c),diff(FK_row3,d)]])
+                         
+         
+        
     def jacobian_matrix(self, angles):
+        [yellow, blue, green, red] = self.joint_positions
+        blue = blue - yellow
+        green = green - yellow
+        red = red - yellow
+
+        arm1 = np.linalg.norm(blue - yellow)
+        arm3 = np.linalg.norm(red - green)
+        arm2 = np.linalg.norm(green - blue)
+        
         a, b, c, d = angles
         sin = np.sin
         cos = np.cos
 
         jacobian_11 = np.array(
             2 * cos(d) * (sin(b) * cos(c) * cos(a) - sin(c) * sin(a)) +
-            3 * sin(b) * cos(c) * cos(a) +
+            arm2 * sin(b) * cos(c) * cos(a) +
             2 * sin(d) * cos(b) * cos(a) +
-            3 * sin(c) * sin(a)
+            arm2 * sin(c) * sin(a)
         )
 
         jacobian_12 = np.array(
             2 * cos(d) * sin(a) * cos(c) * cos(b) +
-            3 * sin(a) * cos(c) * cos(b) -
+            arm2 * sin(a) * cos(c) * cos(b) -
             2 * sin(a) * sin(d) * sin(b)
         )
 
         jacobian_13 = np.array(
             2 * cos(d) * (cos(a) * cos(c) - sin(a) * sin(b) * sin(c)) +
-            3 * cos(a) * cos(c) -
-            3 * sin(a) * sin(b) * sin(c)
+            arm2 * cos(a) * cos(c) -
+            arm2 * sin(a) * sin(b) * sin(c)
         )
 
         jacobian_14 = np.array(
@@ -256,15 +291,15 @@ class ProcessImages:
         jacobian_21 = np.array(
             2 * cos(d) * (cos(a) * sin(c) +
                           sin(a) * cos(c) * sin(b)) +
-            3 * cos(a) * sin(c) +
-            3 * sin(a) * cos(c) * sin(b) +
+            arm2 * cos(a) * sin(c) +
+            arm2 * sin(a) * cos(c) * sin(b) +
             2 * sin(a) * cos(b) * sin(d)
         )
 
         jacobian_22 = np.array(
             2 * cos(a) * sin(b) * sin(d) -
             2 * cos(a) * cos(c) * cos(b) * cos(d) -
-            3 * cos(a) * cos(c) * cos(b)
+            arm2 * cos(a) * cos(c) * cos(b)
         )
 
         jacobian_23 = np.array(
@@ -287,12 +322,12 @@ class ProcessImages:
         jacobian_32 = np.array(
             -2 * cos(b) * sin(d) -
             2 * sin(b) * cos(d) * cos(c) -
-            3 * sin(b) * cos(c)
+            arm2 * sin(b) * cos(c)
         )
 
         jacobian_33 = np.array(
             -2 * cos(b) * cos(d) * sin(c) -
-            3 * cos(b) * sin(c)
+            arm2 * cos(b) * sin(c)
         )
 
         jacobian_34 = np.array(

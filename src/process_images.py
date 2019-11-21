@@ -212,11 +212,11 @@ class ImageProcessor:
         # ---- publish target position -----
         self.detect_target()
         target = Float64MultiArray()
-        target.data = self.target_position - all_positions[0]
+        target.data = (self.target_position - all_positions[0]) * p2m
         self.target_publisher.publish(target)
 
         # ----- publish end effector position -----
-        end_effector_pos = (all_positions[3] - all_positions[0])
+        end_effector_pos = (all_positions[3] - all_positions[0]) * p2m
         ef = Float64MultiArray()
         ef.data = end_effector_pos
         self.end_effector_publisher.publish(ef)

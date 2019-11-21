@@ -156,7 +156,7 @@
         <node name="image1" pkg="ivr_assignment" type="image1.py" args="$(find ivr_assignment)/src/image1.py" />
         <node name="image2" pkg="ivr_assignment" type="image2.py" args="$(find ivr_assignment)/src/image2.py" />
         <node name="process_images" pkg="ivr_assignment" type="process_images.py" args="$(find ivr_assignment)/src/process_images.py" />
-        <node name="control_3_angles" pkg="ivr_assignment" type="control_3_angles.py" args="$(find ivr_assignment)/src/control_3_angles.py" />
+        <!--<node name="control" pkg="ivr_assignment" type="control.py" args="$(find ivr_assignment)/src/control.py" />-->
    </group>
 
 
