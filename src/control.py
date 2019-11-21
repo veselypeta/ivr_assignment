@@ -27,7 +27,7 @@ class control:
         self.angles = np.zeros(4)
         self.jacobian = np.zeros([3, 4], dtype='float64')
         self.trajectory_sub = message_filters.Subscriber("target_topic", Float64MultiArray)
-        self.end_effector_sub = message_filters.Subscriber("end_effector_topic", Float64MultiArray)
+        # self.end_effector_sub = message_filters.Subscriber("end_effector_topic", Float64MultiArray)
         # self.angles_sub = message_filters.Subscriber("angles_topic", Float64MultiArray)
         # self.jacobian_sub = message_filters.Subscriber("jacobian_topic", Float64MultiArray)
 
@@ -39,13 +39,27 @@ class control:
         self.prev_angles = None
 
         ts = message_filters.ApproximateTimeSynchronizer(
-            [self.trajectory_sub, self.end_effector_sub], 10, 10,
+            [self.trajectory_sub], 10, 10,
             allow_headerless=True)
         ts.registerCallback(self.callback)
 
-    def callback(self, trajectory, end_effector):
+    def callback(self, trajectory):
+        # ----- calculate the position of the end effector from the angles -----
+        fk = self.FK()
+        FK_row1 = fk[0]
+        FK_row2 = fk[1]
+        FK_row3 = fk[2]
+        a, b, c, d = symbols('a b c d', real=True)
+        a1, a2, a3, a4 = self.angles
+        # jacob = np.zeros([3, 4],dtype='float64')
+        subst = [(a, a1), (b, a2), (c, a3), (d, a4)]
+        self.end_effector = np.array([
+            FK_row1.subs(subst).evalf(),
+            FK_row2.subs(subst).evalf(),
+            FK_row3.subs(subst).evalf()
+        ])
+
         self.trajectory = np.array(trajectory.data)
-        self.end_effector = np.array(end_effector.data)
 
         #test_angles = np.array([0.6, 1.1, 0.9, 1.0])
         #print(" --------------------------------------------------------------------------------- ")
