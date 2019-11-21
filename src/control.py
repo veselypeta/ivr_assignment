@@ -46,24 +46,33 @@ class control:
     def callback(self, trajectory, end_effector):
         self.trajectory = np.array(trajectory.data)
         self.end_effector = np.array(end_effector.data)
-        #self.angles = np.array(angles.data)
-        #self.jacobian = np.array(jacobian.data).reshape((3, 4))
 
-        q_d = self.control_closed()
+        test_angles = np.array([1, 1, 1, 1])
+        print(" --------------------------------------------------------------------------------- ")
+        print("Angles Used => 1 = {} rad | 2 = {} rad | 3 = {} rad | 4 = {} rad").format(*tuple(test_angles))
+        print("Measured End-Effector Position   -> " + str(self.end_effector))
+        a, b, c, d = symbols('a b c d', real=True)
+        subst = [(a, test_angles[0]), (b, test_angles[1]), (c, test_angles[2]), (d, test_angles[3])]
+        fk_ef_pos = self.FK().subs(subst).evalf().col(-1)
+        print("Calculated End-Effector Position -> " + str(fk_ef_pos))
 
-        joint0 = Float64()
-        joint0.data = q_d[0]
-        joint1 = Float64()
-        joint1.data = q_d[1]
-        joint2 = Float64()
-        joint2.data = q_d[2]
-        joint3 = Float64()
-        joint3.data = q_d[3]
+        # q_d = self.control_closed()
+        #
+        # joint0 = Float64()
+        # joint0.data = q_d[0]
+        # joint1 = Float64()
+        # joint1.data = q_d[1]
+        # joint2 = Float64()
+        # joint2.data = q_d[2]
+        # joint3 = Float64()
+        # joint3.data = q_d[3]
+        #
+        # self.robot_joint1_pub.publish(joint0)
+        # self.robot_joint2_pub.publish(joint1)
+        # self.robot_joint3_pub.publish(joint2)
+        # self.robot_joint4_pub.publish(joint3)
 
-        self.robot_joint1_pub.publish(joint0)
-        self.robot_joint2_pub.publish(joint1)
-        self.robot_joint3_pub.publish(joint2)
-        self.robot_joint4_pub.publish(joint3)
+
 
     def control_closed(self):
         K_p = 0.5 * np.identity(3)
@@ -89,7 +98,7 @@ class control:
         q = 2 #np.linalg.norm(red - green)
         p = 3 #np.linalg.norm(green - blue)
         
-        a,b,c,d = symbols('a b c d', real = True)
+        a,b,c,d = symbols('a b c d', real=True)
         
         #FK_row1 = p*sin(a)*sin(b)*cos(c) + p*sin(c)*cos(a) + q*(sin(a)*sin(b)*cos(c) + sin(c)*cos(a))*cos(d) + q*sin(a)*sin(d)*cos(b)
         #FK_row2 = p*sin(a)*sin(c) - p*sin(b)*cos(a)*cos(c) + q*(sin(a)*sin(c) - sin(b)*cos(a)*cos(c))*cos(d) - q*sin(d)*cos(a)*cos(b)
@@ -148,7 +157,7 @@ class control:
             [0, 0, 0, 1]
         ])
         
-        return (z_rot * trans.subs(l,2) *  x_rot1 * y_rot * trans.subs(l,3) * x_rot2 * trans.subs(l,2)).col(-1)
+        return (z_rot * trans.subs(l, 2) * x_rot1 * y_rot * trans.subs(l, 3) * x_rot2 * trans.subs(l, 2)).col(-1)
 
 # call the class
 def main(args):
