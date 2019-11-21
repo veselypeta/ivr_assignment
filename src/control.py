@@ -47,36 +47,36 @@ class control:
         self.trajectory = np.array(trajectory.data)
         self.end_effector = np.array(end_effector.data)
 
-        test_angles = np.array([1, 1, 1, 1])
-        print(" --------------------------------------------------------------------------------- ")
-        print("Angles Used => 1 = {} rad | 2 = {} rad | 3 = {} rad | 4 = {} rad").format(*tuple(test_angles))
-        print("Measured End-Effector Position   -> " + str(self.end_effector))
-        a, b, c, d = symbols('a b c d', real=True)
-        subst = [(a, test_angles[0]), (b, test_angles[1]), (c, test_angles[2]), (d, test_angles[3])]
-        fk_ef_pos = self.FK().subs(subst).evalf().col(-1)
-        print("Calculated End-Effector Position -> " + str(fk_ef_pos))
+        #test_angles = np.array([0.6, 1.1, 0.9, 1.0])
+        #print(" --------------------------------------------------------------------------------- ")
+        #print("Angles Used => 1 = {} rad | 2 = {} rad | 3 = {} rad | 4 = {} rad").format(*tuple(test_angles))
+        #print("Measured End-Effector Position   -> " + str(self.end_effector))
+        #a, b, c, d = symbols('a b c d', real=True)
+        #subst = [(a, test_angles[0]), (b, test_angles[1]), (c, test_angles[2]), (d, test_angles[3])]
+        #fk_ef_pos = self.FK().subs(subst).evalf().col(-1)
+        #print("Calculated End-Effector Position -> " + str(fk_ef_pos))
 
-        # q_d = self.control_closed()
-        #
-        # joint0 = Float64()
-        # joint0.data = q_d[0]
-        # joint1 = Float64()
-        # joint1.data = q_d[1]
-        # joint2 = Float64()
-        # joint2.data = q_d[2]
-        # joint3 = Float64()
-        # joint3.data = q_d[3]
-        #
-        # self.robot_joint1_pub.publish(joint0)
-        # self.robot_joint2_pub.publish(joint1)
-        # self.robot_joint3_pub.publish(joint2)
-        # self.robot_joint4_pub.publish(joint3)
+        q_d = self.control_closed()
+        
+        joint0 = Float64()
+        joint0.data = q_d[0]
+        joint1 = Float64()
+        joint1.data = q_d[1]
+        joint2 = Float64()
+        joint2.data = q_d[2]
+        joint3 = Float64()
+        joint3.data = q_d[3]
+        
+        self.robot_joint1_pub.publish(joint0)
+        self.robot_joint2_pub.publish(joint1)
+        self.robot_joint3_pub.publish(joint2)
+        self.robot_joint4_pub.publish(joint3)
 
 
 
     def control_closed(self):
-        K_p = 0.5 * np.identity(3)
-        K_d = 0.01 * np.identity(3)
+        K_p = 2 * np.identity(3)
+        K_d = 0.1 * np.identity(3)
         cur_time = np.array([rospy.get_time()])
         dt = cur_time - self.time_previous_step
         self.time_previous_step = cur_time
@@ -88,7 +88,11 @@ class control:
         J_inv = np.linalg.pinv(self.empty_jacobian(q))
         dq_d = np.dot(J_inv, (np.dot(K_d, self.error_d.transpose()) + np.dot(K_p, self.error.transpose())))
         q_d = q + (dt * dq_d)
+        a1 = q_d[0] % np.pi
+        q_d = q_d % np.pi/2
+        q_d[0] = a1
         self.angles = q_d
+        print(q_d)
         return q_d
 
     def empty_jacobian(self, x):
