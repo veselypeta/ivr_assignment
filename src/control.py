@@ -20,30 +20,36 @@ class control:
         self.robot_joint2_pub = rospy.Publisher("/robot/joint2_position_controller/command", Float64, queue_size=10)
         self.robot_joint3_pub = rospy.Publisher("/robot/joint3_position_controller/command", Float64, queue_size=10)
         self.robot_joint4_pub = rospy.Publisher("/robot/joint4_position_controller/command", Float64, queue_size=10)
+        
+        # using target position without vision part
+        self.target_x = message_filters.Subscriber("/target/x_position_controller/command", Float64)
+        self.target_y = message_filters.Subscriber("/target/y_position_controller/command", Float64)
+        self.target_z = message_filters.Subscriber("/target/z_position_controller/command", Float64)
 
         # function to recieve data
         self.end_effector = np.zeros(3)
         self.trajectory = np.zeros(3)
         self.angles = np.zeros(4)
         self.jacobian = np.zeros([3, 4], dtype='float64')
-        self.trajectory_sub = message_filters.Subscriber("target_topic", Float64MultiArray)
+        
+        # using angles, jacobian and end effector position from vision part
+        # self.trajectory_sub = message_filters.Subscriber("target_topic", Float64MultiArray)
         # self.end_effector_sub = message_filters.Subscriber("end_effector_topic", Float64MultiArray)
         # self.angles_sub = message_filters.Subscriber("angles_topic", Float64MultiArray)
         # self.jacobian_sub = message_filters.Subscriber("jacobian_topic", Float64MultiArray)
 
         self.time_trajectory = rospy.get_time()
         self.time_previous_step = np.array([rospy.get_time()], dtype='float64')
-        self.time_previous_step2 = np.array([rospy.get_time()], dtype='float64')
         self.error = np.array([0, 0, 0], dtype='float64')
         self.error_d = np.array([0, 0, 0], dtype='float64')
-        self.prev_angles = None
+        self.total_error = 0
 
         ts = message_filters.ApproximateTimeSynchronizer(
-            [self.trajectory_sub], 10, 10,
+            [self.target_x, self.target_y, self.target_z], 10, 10,
             allow_headerless=True)
         ts.registerCallback(self.callback)
 
-    def callback(self, trajectory):
+    def callback(self, x, y, z):
         # ----- calculate the position of the end effector from the angles -----
         fk = self.FK()
         FK_row1 = fk[0]
@@ -51,15 +57,17 @@ class control:
         FK_row3 = fk[2]
         a, b, c, d = symbols('a b c d', real=True)
         a1, a2, a3, a4 = self.angles
-        # jacob = np.zeros([3, 4],dtype='float64')
         subst = [(a, a1), (b, a2), (c, a3), (d, a4)]
         self.end_effector = np.array([
             FK_row1.subs(subst).evalf(),
             FK_row2.subs(subst).evalf(),
             FK_row3.subs(subst).evalf()
         ])
+        print("-----")
+        print(self.end_effector)
 
-        self.trajectory = np.array(trajectory.data)
+        self.trajectory = np.array([x.data, y.data, z.data])
+        print(self.trajectory)
 
         #test_angles = np.array([0.6, 1.1, 0.9, 1.0])
         #print(" --------------------------------------------------------------------------------- ")
@@ -86,10 +94,12 @@ class control:
         self.robot_joint3_pub.publish(joint2)
         self.robot_joint4_pub.publish(joint3)
 
+
     def control_closed(self):
         # ----- gains -----
-        K_p = 0.5 * np.identity(3)
-        K_d = 0.01 * np.identity(3)
+        K_p = 5 * np.identity(3)
+        K_d = 0.6 * np.identity(3)
+        K_i = 0.2 * np.identity(3)
 
         # ----- time step -----
         cur_time = np.array([rospy.get_time()])
@@ -103,36 +113,29 @@ class control:
         # ----- error -----
         self.error_d = ((pos_d - pos) - self.error) / dt
         self.error = pos_d - pos
+        self.total_error += self.error * dt
 
         q = self.angles
         J_inv = np.linalg.pinv(self.empty_jacobian(q))
-        dq_d = np.dot(J_inv, (np.dot(K_d, self.error_d.transpose()) + np.dot(K_p, self.error.transpose())))
+        dq_d = np.dot(J_inv, (np.dot(K_d, self.error_d.transpose()) + np.dot(K_p, self.error.transpose()) + np.dot(K_i,self.total_error)))
         q_d = q + (dt * dq_d)
         a1 = q_d[0] % np.pi
         q_d = q_d % np.pi/2
         q_d[0] = a1
         self.angles = q_d
-        print(q_d)
         return q_d
+
 
     def empty_jacobian(self, x):
         a1, a2, a3, a4 = x
 
-        # o = 2 #np.linalg.norm(blue - yellow)
-        # q = 2 #np.linalg.norm(red - green)
-        # p = 3 #np.linalg.norm(green - blue)
-
         a, b, c, d = symbols('a b c d', real=True)
 
-        # FK_row1 = p*sin(a)*sin(b)*cos(c) + p*sin(c)*cos(a) + q*(sin(a)*sin(b)*cos(c) + sin(c)*cos(a))*cos(d) + q*sin(a)*sin(d)*cos(b)
-        # FK_row2 = p*sin(a)*sin(c) - p*sin(b)*cos(a)*cos(c) + q*(sin(a)*sin(c) - sin(b)*cos(a)*cos(c))*cos(d) - q*sin(d)*cos(a)*cos(b)
-        # FK_row3 = o + p*cos(b)*cos(c) - q*sin(b)*sin(d) + q*cos(b)*cos(c)*cos(d)
         fk = self.FK()
         FK_row1 = fk[0]
         FK_row2 = fk[1]
         FK_row3 = fk[2]
 
-        # jacob = np.zeros([3, 4],dtype='float64')
         subst = [(a, a1), (b, a2), (c, a3), (d, a4)]
         jacob = Matrix([[float(diff(FK_row1, a).subs(subst).evalf()), float(diff(FK_row1, b).subs(subst).evalf()),
                          float(diff(FK_row1, c).subs(subst).evalf()), float(diff(FK_row1, d).subs(subst).evalf())],
@@ -142,6 +145,7 @@ class control:
                          float(diff(FK_row3, c).subs(subst).evalf()), float(diff(FK_row3, d).subs(subst).evalf())]])
 
         return np.array(jacob).astype(np.float64)
+
 
     def FK(self):
         a, b, c, d, l = symbols('a b c d l', real=True)
@@ -184,7 +188,7 @@ class control:
         return (z_rot * trans.subs(l, 2) * x_rot1 * y_rot * trans.subs(l, 3) * x_rot2 * trans.subs(l, 2)).col(-1)
 
 
-# call the class
+
 def main(args):
     ic = control()
     try:
@@ -194,6 +198,6 @@ def main(args):
     cv2.destroyAllWindows()
 
 
-# run the code if the node is called
+
 if __name__ == '__main__':
     main(sys.argv)
