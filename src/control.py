@@ -21,6 +21,11 @@ class control:
         self.robot_joint3_pub = rospy.Publisher("/robot/joint3_position_controller/command", Float64, queue_size=10)
         self.robot_joint4_pub = rospy.Publisher("/robot/joint4_position_controller/command", Float64, queue_size=10)
         
+        #publish end effector position
+        self.endef_x = rospy.Publisher("/endef_x", Float64, queue_size=10)
+        self.endef_y = rospy.Publisher("/endef_y", Float64, queue_size=10)
+        self.endef_z = rospy.Publisher("/endef_z", Float64, queue_size=10)
+        
         # using target position without vision part
         self.target_x = message_filters.Subscriber("/target/x_position_controller/command", Float64)
         self.target_y = message_filters.Subscriber("/target/y_position_controller/command", Float64)
@@ -93,7 +98,17 @@ class control:
         self.robot_joint2_pub.publish(joint1)
         self.robot_joint3_pub.publish(joint2)
         self.robot_joint4_pub.publish(joint3)
-
+        
+        ee_x = Float64()
+        ee_x.data = self.end_effector[0]
+        ee_y = Float64()
+        ee_y.data = self.end_effector[1]
+        ee_z = Float64()
+        ee_z.data = self.end_effector[2]
+        
+        self.endef_x.publish(ee_x)
+        self.endef_y.publish(ee_y)
+        self.endef_z.publish(ee_z)
 
     def control_closed(self):
         # ----- gains -----
